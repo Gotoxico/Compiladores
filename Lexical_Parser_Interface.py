@@ -28,6 +28,14 @@ header.pack(fill="x")
 main_frame = tk.Frame(root, bg="#eef1f5")
 main_frame.pack(fill="both", expand=True, padx=40, pady=20)
 
+label = tk.Label(main_frame, 
+                text="Digite a expressão no espaço em branco ou importe ela de um arquivo de texto",
+                fg="black",
+                font=("Segoe UI", 16, "bold")
+                )
+
+label.pack(fill="x")
+
 # ================= BOTÃO IMPORTAR =================
 button_frame = tk.Frame(main_frame, bg="#eef1f5")
 button_frame.pack(fill="x", pady=10)
@@ -51,7 +59,7 @@ def import_text():
 
 btn_importar = ttk.Button(
     button_frame,
-    text="Importar Texto",
+    text="Importar Expressão",
     command=import_text
 )
 btn_importar.pack()
