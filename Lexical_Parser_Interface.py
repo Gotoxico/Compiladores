@@ -31,7 +31,7 @@ main_frame.pack(fill="both", expand=True, padx=40, pady=20)
 label = tk.Label(main_frame, 
                 text="Digite a expressão no espaço em branco ou importe ela de um arquivo de texto",
                 fg="black",
-                font=("Segoe UI", 16, "bold")
+                font=("Segoe UI", 16)
                 )
 
 label.pack(fill="x")
