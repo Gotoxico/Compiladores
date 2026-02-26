@@ -26,8 +26,8 @@ class Token:
 
 
 token_specification = [
-    ('nInt',   r'\d+'),
     ('nReal',  r'\d+\.\d+'),
+    ('nInt',   r'\d+'),
     ('aP',     r'\('),
     ('fP',     r'\)'),
     ('opSoma', r'\+'),
