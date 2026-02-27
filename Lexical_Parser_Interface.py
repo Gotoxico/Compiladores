@@ -6,7 +6,7 @@ import style
 # ================= JANELA =================
 root = tk.Tk()
 root.title("Analisador Léxico")
-root.geometry("1530x1080")
+root.geometry("1920x1080")
 root.configure(bg="#eef1f5")
 
 janela_tabela= None
@@ -124,7 +124,7 @@ def abrir_tabela(tokens):
     janela_tabela.geometry("1530x1080")
     janela_tabela.configure(bg="#eef1f5")
 
-    frame = tk.Frame(janela_tabela, bg="#eef1f5")
+    frame = tk.Frame(janela_tabela, bg="#8eb8ed")
     frame.pack(fill="both", expand=True, padx=20, pady=20)
 
     tabela = ttk.Treeview(
@@ -145,6 +145,8 @@ def abrir_tabela(tokens):
     tabela.column("Coluna Inicial", width=120, anchor="center")
     tabela.column("Coluna Final", width=120, anchor="center")
 
+    tabela.tag_configure("erro", background="#ec8383")
+
     scrollbar = ttk.Scrollbar(frame, orient="vertical", command=tabela.yview)
     tabela.configure(yscrollcommand=scrollbar.set)
 
@@ -153,6 +155,10 @@ def abrir_tabela(tokens):
 
     # Inserindo dados
     for t in tokens:
+        tag = ""
+        if t.type == "MISMATCH":
+            tag="erro"
+
         tabela.insert(
             "",
             "end",
@@ -162,7 +168,7 @@ def abrir_tabela(tokens):
                 t.line,
                 t.col_start,
                 t.col_end
-            )
+            ), tags=(tag)
         )
 
 

@@ -26,8 +26,8 @@ class Token:
 
 
 token_specification = [
-    ('nInt',   r'\d+'),
     ('nReal',  r'\d+\.\d+'),
+    ('nInt',   r'\d+'),
     ('aP',     r'\('),
     ('fP',     r'\)'),
     ('opSoma', r'\+'),
@@ -63,10 +63,7 @@ def lexico(sequence):
         if kind == 'TAB':
             continue
 
-        if kind == 'MISMATCH':
-            raise RuntimeError(
-                f'Caractere fora do alfabeto "{lexeme}" na linha {line_num}'
-            )
+        
 
         col_start = start - line_start + 1
         col_end = end - line_start
