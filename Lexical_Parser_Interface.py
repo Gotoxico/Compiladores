@@ -170,6 +170,27 @@ def abrir_tabela(tokens):
                 t.col_end
             ), tags=(tag)
         )
+    save_frame = tk.Frame(janela_tabela, bg="#eef1f5")
+    save_frame.pack(fill="x", pady=10)
+    def salvar_resultado():
+        arquivo = filedialog.asksaveasfilename(
+            title="Salvar resultado",
+            defaultextension=".txt",
+            filetypes=[("Arquivos de Texto", "*.txt")]
+        )
 
+        if arquivo:
+            try:
+                with open(arquivo, "w", encoding="utf-8") as f:
+                    for t in tokens:
+                        linha = f"Tipo: {t.type}, Lexema: {t.lexeme}, Linha: {t.line}, Coluna Inicial: {t.col_start}, Coluna Final: {t.col_end}\n"
+                        f.write(linha)
+
+                messagebox.showinfo("Sucesso", "Resultado salvo com sucesso!")
+
+            except Exception as e:
+                messagebox.showerror("Erro", f"Não foi possível salvar o arquivo.\n{e}")
+    btn_salvar = ttk.Button(save_frame, text="Salvar Resultado", command=salvar_resultado)
+    btn_salvar.pack()
 
 root.mainloop()
