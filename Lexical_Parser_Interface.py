@@ -156,7 +156,7 @@ def abrir_tabela(tokens):
     # Inserindo dados
     for t in tokens:
         tag = ""
-        if t.type == "MISMATCH":
+        if t.type == "MISMATCH" or t.type == "comentario_bloco_incompleto":
             tag="erro"
 
         tabela.insert(
