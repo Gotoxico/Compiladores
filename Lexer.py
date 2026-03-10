@@ -2,21 +2,6 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
-def read_source(mode: str, content: str):
-    mode = mode.lower()
-
-    if mode == 'file':
-        with open(content, 'r', encoding='utf-8') as f:
-            return f.read()
-
-    elif mode == 'sequence':
-        return content
-
-    else:
-        raise ValueError("Opcao Invalida")
-
-
-
 @dataclass
 class Token:
     type: str
@@ -86,41 +71,47 @@ token_specification = [
     ('MISMATCH', r'.'),
 ]
 
-tok_regex = '|'.join(
-    f'(?P<{name}>{pattern})'
-    for name, pattern in token_specification
-)
+
+
+class lexer:
+    def __init__(self):
+        self.tok_regex_or_list = '|'.join(f'(?P<{name}>{pattern})' for name, pattern in token_specification)
+        self.line_num = 1
+        self.line_start = 0
+
+    def analise(self, sequence):
+        for match in re.finditer(self.tok_regex_or_list, sequence):
+            kind = match.lastgroup
+            lexeme = match.group()
+            start = match.start()
+            end = match.end()
+
+            if kind == 'NEWLINE':
+                self.line_num += 1
+                self.line_start = end
+                continue
+
+            if kind in ('SKIP', 'comentario_bloco', 'comentario_linha'):
+                continue
+
+            if kind in ('comentario_bloco_incompleto'):
+                yield Token(kind, None, self.line_num)
+                continue
+
+            '''if kind == 'MISMATCH':
+                raise RuntimeError(
+                    f'Caractere inesperado "{lexeme}" na linha {line_num}'
+                )'''
+
+            col_start = start - self.line_start + 1
+            col_end = end - self.line_start
+
+            yield Token(kind, lexeme, self.line_num, col_start, col_end)
 
 
 
-def lexico(sequence):
-    line_num = 1
-    line_start = 0
 
-    for match in re.finditer(tok_regex, sequence):
-        kind = match.lastgroup
-        lexeme = match.group()
-        start = match.start()
-        end = match.end()
 
-        if kind == 'NEWLINE':
-            line_num += 1
-            line_start = end
-            continue
 
-        if kind in ('SKIP', 'comentario_bloco', 'comentario_linha'):
-            continue
 
-        if kind in ('comentario_bloco_incompleto'):
-            yield Token(kind)
-            continue
 
-        '''if kind == 'MISMATCH':
-            raise RuntimeError(
-                f'Caractere inesperado "{lexeme}" na linha {line_num}'
-            )'''
-
-        col_start = start - line_start + 1
-        col_end = end - line_start
-
-        yield Token(kind, lexeme, line_num, col_start, col_end)

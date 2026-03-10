@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-import Lexical_Parser as lp
+import Lexer
 import style
 
 # ================= JANELA =================
@@ -103,7 +103,8 @@ def lexical():
         return
 
     try:
-        results = list(lp.lexico(content))
+        lexer = Lexer.lexer()
+        results = list(lexer.analise(content))
         abrir_tabela(results)
 
     except Exception as e:
