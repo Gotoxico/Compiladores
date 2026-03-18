@@ -50,6 +50,9 @@ class Parser:
 
         self.comando_composto()
 
+
+
+
     def parte_declaracao_variaveis(self):
         self.match("variavel")
 
@@ -59,11 +62,11 @@ class Parser:
 
             self.match("ponto_virgula")
 
-            if self.current() and self.current().type == "identificador_tipo":
+            if self.current() and self.current().type == "identificador":
                 self.declaracao_variaveis()
 
     def declaracao_variaveis(self):
-        tipo = self.match("identificador_tipo")
+        tipo = self.match("identificador")
 
         ids = self.lista_identificadores()
 
@@ -72,11 +75,7 @@ class Parser:
             if self.sym_table.lookup(ident.lexeme):
                 raise Exception(f"Variável {ident.lexeme} já declarada")
 
-            self.sym_table.insert(
-                name=ident.lexeme,
-                type=tipo.lexeme,
-                category="variable"
-            )
+            self.sym_table.insert(name=ident.lexeme, type=tipo.lexeme, category="variable")
 
     def lista_identificadores(self):
         ids = []
@@ -84,10 +83,14 @@ class Parser:
         ids.append(self.match("identificador"))
 
         while self.current() and self.current().type == "virgula":
-
             self.match("virgula")
 
             ids.append(self.match("identificador"))
 
         return ids
+    
+
+
+    def parte_declaracao_sub_rotinas(self):
+        
         

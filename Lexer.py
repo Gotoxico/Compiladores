@@ -22,8 +22,7 @@ token_specification = [
     ('atribuicao', r':='),
 
     # Números 
-    ('numero_real', r'\d{1,10}\.\d{1,10}'),
-    ('MISMATCH_numero_inteiro', r'\d{11,}'),  
+    ('MISMATCH_numero_inteiro', r'\d{11,}'),
     ('numero_inteiro', r'\d{1,10}'),
 
     # Pontuação
@@ -48,9 +47,9 @@ token_specification = [
     ('relacao', r'<>|<=|>=|=|<|>'),
 
     # Identificadores pré-declarados
-    ('identificador_tipo', r'\bint\b|\breal\b|\bboolean\b'),
-    ('identificador_procedimento', r'\bread\b|\bwrite\b'),
-    ('identificador_constante', r'\btrue\b|\bfalse\b'),
+    ('identificador', r'\bint\b|\breal\b|\bboolean\b|\bread\b|\bwrite\b|\btrue\b|\bfalse\b'), # This used to be identificador_tipo
+    '''('identificador_procedimento', r'\bread\b|\bwrite\b'),
+    ('identificador_constante', r'\btrue\b|\bfalse\b'),'''
 
     # Parênteses
     ('abre_parentese', r'\('),
