@@ -195,7 +195,7 @@ def compilar():
         tabela_erros.delete(i)
     
     for tok in tokens:
-        if tok.type != "MISMATCH": 
+        if tok.type not in {"MISMATCH", "MISMATCH_numero_inteiro", "MISMATCH_identificador", "comentario_bloco_incompleto"}:
             tabela_lexica.insert("", "end", values=(
                 tok.type,
                 tok.lexeme,
