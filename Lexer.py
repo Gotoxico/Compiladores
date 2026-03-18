@@ -23,6 +23,7 @@ token_specification = [
 
     # Números 
     ('numero_real', r'\d{1,10}\.\d{1,10}'),
+    ('MISMATCH_numero_inteiro', r'\d{11,}'),  
     ('numero_inteiro', r'\d{1,10}'),
 
     # Pontuação
@@ -62,7 +63,8 @@ token_specification = [
     ('operador_divisao', r'/'),
 
     # Identificador genérico
-    ('identificador', r'[A-Za-z_][A-Za-z0-9_]*'),
+    ('MISMATCH_identificador', r'[A-Za-z_][A-Za-z0-9_]{10,}'),
+    ('identificador', r'[A-Za-z_][A-Za-z0-9_]{0,9}'),
 
     # Controle
     ('NEWLINE', r'\n'),
