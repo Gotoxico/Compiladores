@@ -47,9 +47,9 @@ token_specification = [
     ('relacao', r'<>|<=|>=|=|<|>'),
 
     # Identificadores pré-declarados
-    ('identificador', r'\bint\b|\breal\b|\bboolean\b|\bread\b|\bwrite\b|\btrue\b|\bfalse\b'), # This used to be identificador_tipo
-    '''('identificador_procedimento', r'\bread\b|\bwrite\b'),
-    ('identificador_constante', r'\btrue\b|\bfalse\b'),'''
+    ('identificador_pre_declarado', r'\bint\b|\breal\b|\bboolean\b|\bread\b|\bwrite\b|\btrue\b|\bfalse\b'), # This used to be identificador_tipo
+    #('identificador_procedimento', r'\bread\b|\bwrite\b'),
+    #('identificador_constante', r'\btrue\b|\bfalse\b'),
 
     # Parênteses
     ('abre_parentese', r'\('),

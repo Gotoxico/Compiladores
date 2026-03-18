@@ -92,5 +92,5 @@ class Parser:
 
 
     def parte_declaracao_sub_rotinas(self):
-        
+        a = 0
         
