@@ -42,7 +42,7 @@ class Parser:
 
 
     def bloco(self):
-        if self.current() and self.current().type == "variavel":
+        if self.current() and self.current().type == "identificador_tipo":
             self.parte_declaracao_variaveis()
 
         if self.current() and self.current().type == "procedimento":
@@ -54,28 +54,25 @@ class Parser:
 
 
     def parte_declaracao_variaveis(self):
-        self.match("variavel")
-
         self.declaracao_variaveis()
 
         while self.current() and self.current().type == "ponto_virgula":
-
             self.match("ponto_virgula")
 
-            if self.current() and self.current().type == "identificador":
+            if self.current() and self.current().type == "identificador_tipo":
                 self.declaracao_variaveis()
 
     def declaracao_variaveis(self):
-        tipo = self.match("identificador")
+        tipo = self.match("identificador_tipo")
 
         ids = self.lista_identificadores()
 
         for ident in ids:
-            # Still needs to change this error handling
+            # We still need to change this error handling
             if self.sym_table.lookup(ident.lexeme):
                 raise Exception(f"Variável {ident.lexeme} já declarada")
 
-            self.sym_table.insert(name=ident.lexeme, type=tipo.lexeme, category="variable")
+            self.sym_table.insert(name=ident.lexeme, type=tipo.lexeme, category="variável")
 
     def lista_identificadores(self):
         ids = []
@@ -92,5 +89,59 @@ class Parser:
 
 
     def parte_declaracao_sub_rotinas(self):
-        a = 0
+        self.declaracao_procedimento()
+
+        while self.current() and self.current().type == "ponto_virgula":
+            self.match("ponto_virgula")
+
+            if self.current() and self.current().type == "procedimento":
+                self.declaracao_procedimento()
+
+    def declaracao_procedimento(self):
+        tipo = self.match("procedimento")
+
+        identificador = self.match("identificador")
+
+        if self.sym_table.lookup(identificador.lexeme):
+                raise Exception(f"Procedimento {identificador.lexeme} já declarado")
+
+        self.sym_table.insert(name=identificador.lexeme, type=tipo.lexeme, category="procedimento")
+
+        if self.current() and self.current().type == "abre_parentese":
+            self.parametros_formais()
+        
+        self.match("ponto_virgula")
+
+        self.bloco()
+
+    def parametros_formais(self):
+        self.match("abre_parentese")
+
+        self.secao_parametros_formais()
+
+        while self.current() and self.current().type == "ponto_virgula":
+            self.match("ponto_virgula")
+
+            self.secao_parametros_formais()
+
+        self.match("fecha_parentese")
+
+    def secao_parametros_formais(self):
+        if self.current().type == "variavel":
+            self.match("variavel")
+
+        identificadores = self.lista_identificadores()
+
+        self.match("dois_pontos")
+
+        identificador_tipo = self.match("identificador_tipo")
+
+        for ident in identificadores:
+            # We still need to change this error handling
+            if self.sym_table.lookup(ident.lexeme):
+                raise Exception(f"Parâmetro formal {ident.lexeme} já declarado")
+
+            self.sym_table.insert(name=ident.lexeme, type=identificador_tipo.lexeme, category="parâmetro-formal", passed_as="valor")
+
+
         
