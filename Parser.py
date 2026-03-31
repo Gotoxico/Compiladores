@@ -143,5 +143,112 @@ class Parser:
 
             self.sym_table.insert(name=ident.lexeme, type=identificador_tipo.lexeme, category="parâmetro-formal", passed_as="valor")
 
+    def comando_composto(self):
+        self.match("begin")
+        self.comando()
+        while self.current() and self.current().type == "ponto_virgula":
+            self.match("ponto_virgula")
+            self.comando()
+        self.match("end")
+    
+    def comando(self):
+        token = self.current()
 
+        if token.type == "identificador":
+            self.match("identificador")
+            self.resto_identificador()
+        elif token.type == "if":
+            self.comando_condicional()
+        elif token.type == "while":
+            self.comando_repetitivo()
+        elif token.type == "begin":
+            self.comando_composto()
+        else:
+            raise SyntaxError(f"Comando inesperado: {token.lexeme}")
+
+    def resto_identificador(self):
+        token = self.current()
+
+        if token and token.type == "atribuicao":
+            self.match("atribuicao")
+            self.expressao()
+
+        elif token and token.type == "abre_parentese":
+            self.match("abre_parentese")
+
+            if self.current() and self.current().type != "fecha_parentese":
+                self.lista_expressoes()
+
+            self.match("fecha_parentese")
+        else:
+            pass  # Ainda precisa melhorar esse tratamento de erro
+
+    def comando_condicional(self):
+        self.match("if")
+        self.expressao()
+        self.match("then")
+
+        self.comando()
+
+        if self.current() and self.current().type == "else":
+            self.match("else")
+            self.comando()
+
+    def comando_repetitivo(self):
+        self.match("while")
+        self.expressao()
+        self.match("do")
+        self.comando()
+
+    def lista_expressoes(self):
+        self.expressao()
+
+        while self.current() and self.current().type == "virgula":
+            self.match("virgula")
+            self.expressao()
+
+    def expressao(self):
+        self.expressao_simples()
+
+        if self.current() and self.current().type == "relacao":
+            self.match("relacao")
+            self.expressao_simples()
+
+    def expressao_simples(self):
+        self.termo()
+
+        while self.current() and self.current().type in ("operador_soma", "operador_subtracao", "or"):
+            self.advance()
+            self.termo()
+
+    def termo(self):
+        self.fator()
+
+        while self.current() and self.current().type in ("operador_multiplicacao", "operador_divisao", "and"):
+            self.advance()
+            self.fator()
+    
+    def fator(self):
+        token = self.current()
+
+        if not token:
+            raise SyntaxError("Fim de arquivo inesperado")
         
+        if token.type == "numero_inteiro":
+            self.match("numero_inteiro")
+        
+        elif token.type == "identificador":
+            self.match("identificador")
+            self.resto_identificador()
+
+        elif token.type == "abre_parentese":
+            self.match("abre_parentese")
+            self.expressao()
+            self.match("fecha_parentese")
+        
+        elif token.type == "not":
+            self.match("not")
+            self.fator()
+
+        else:
+            raise SyntaxError(f"Fator inesperado: {token.lexeme}")
