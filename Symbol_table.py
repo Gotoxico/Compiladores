@@ -50,14 +50,12 @@ class SymbolTable:
         self.counter += 1
 
         return symbol
-
-    def lookup(self, name):
-
+    
+    def lookup_current_scope(self, name):
         for symbol in reversed(self.symbols):
-
-            if symbol.name == name and symbol.lexical_level <= self.current_level:
+            if (symbol.name == name and 
+                symbol.lexical_level == self.current_level):
                 return symbol
-
         return None
 
     def mark_used(self, name):

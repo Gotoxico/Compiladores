@@ -14,6 +14,8 @@ class Compilador:
         
         parser.programa()
 
+        return self.sym_table
+
 
     
     
