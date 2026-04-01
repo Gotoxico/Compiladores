@@ -21,7 +21,7 @@ class Parser:
 
         # Still needs to change this error handling
         raise SyntaxError(
-            f"Esperado {token_type}, encontrado {token.type if token else 'EOF'}"
+            f"Esperado {token_type}, encontrado {token.type if token else 'EOF'} Linha: {token.line}"
         )
     
 
@@ -69,7 +69,7 @@ class Parser:
 
         for ident in ids:
             # We still need to change this error handling
-            if self.sym_table.lookup(ident.lexeme):
+            if self.sym_table.lookup_current_scope(ident.lexeme):
                 raise Exception(f"Variável {ident.lexeme} já declarada")
 
             self.sym_table.insert(name=ident.lexeme, type=tipo.lexeme, category="variável")
@@ -99,20 +99,27 @@ class Parser:
 
     def declaracao_procedimento(self):
         tipo = self.match("procedimento")
-
         identificador = self.match("identificador")
 
-        if self.sym_table.lookup(identificador.lexeme):
-                raise Exception(f"Procedimento {identificador.lexeme} já declarado")
+        if self.sym_table.lookup_current_scope(identificador.lexeme):
+            raise Exception(f"Procedimento {identificador.lexeme} já declarado")
 
-        self.sym_table.insert(name=identificador.lexeme, type=tipo.lexeme, category="procedimento")
+        self.sym_table.insert(
+            name=identificador.lexeme,
+            type=tipo.lexeme,
+            category="procedimento"
+        )
+
+        self.sym_table.enter_scope(identificador.lexeme)
 
         if self.current() and self.current().type == "abre_parentese":
             self.parametros_formais()
-        
+
         self.match("ponto_virgula")
 
         self.bloco()
+
+        self.sym_table.exit_scope()
 
     def parametros_formais(self):
         self.match("abre_parentese")
@@ -138,7 +145,7 @@ class Parser:
 
         for ident in identificadores:
             # We still need to change this error handling
-            if self.sym_table.lookup(ident.lexeme):
+            if self.sym_table.lookup_current_scope(ident.lexeme):
                 raise Exception(f"Parâmetro formal {ident.lexeme} já declarado")
 
             self.sym_table.insert(name=ident.lexeme, type=identificador_tipo.lexeme, category="parâmetro-formal", passed_as="valor")
@@ -154,8 +161,8 @@ class Parser:
     def comando(self):
         token = self.current()
 
-        if token.type == "identificador":
-            self.match("identificador")
+        if token.type in ("identificador", "identificador_procedimento"):
+            self.match(token.type)
             self.resto_identificador()
         elif token.type == "if":
             self.comando_condicional()
@@ -236,6 +243,9 @@ class Parser:
         
         if token.type == "numero_inteiro":
             self.match("numero_inteiro")
+
+        elif token.type == "identificador_constante":
+            self.match("identificador_constante")
         
         elif token.type == "identificador":
             self.match("identificador")
@@ -251,4 +261,4 @@ class Parser:
             self.fator()
 
         else:
-            raise SyntaxError(f"Fator inesperado: {token.lexeme}")
+            raise SyntaxError(f"Fator inesperado: {token.lexeme} Linha: {token.line}")

@@ -215,8 +215,14 @@ def compilar():
         ), tags=("mismatch",))
 
     try:
-        parser = Parser.Parser(tokens, compilador.sym_table)
-        parser.programa()
+        symbols = compilador.compile(codigo)
+        for i in tabela_simbolos.get_children():
+            tabela_simbolos.delete(i)
+
+        label_simbolos.config(text=f"{len(symbols.symbols)} símbolos")
+
+        for sym in symbols.symbols:
+            tabela_simbolos.insert("", "end", values=(sym.name, sym.type, sym.category, sym.value, sym.passed_as, sym.used, sym.lexical_level, sym.scope),)
 
         label_erros.config(text="0 erros")
 
