@@ -35,16 +35,7 @@ class SymbolTable:
 
     def insert(self, name, type=None, category=None, value=None, passed_as=None):
 
-        symbol = Symbol(
-            id=self.counter,
-            name=name,
-            type=type,
-            category=category,
-            value=value,
-            passed_as=passed_as,
-            lexical_level=self.current_level,
-            scope=self.current_scope()
-        )
+        symbol = Symbol(id=self.counter, name=name, type=type, category=category, value=value, passed_as=passed_as, lexical_level=self.current_level, scope=self.current_scope())
 
         self.symbols.append(symbol)
         self.counter += 1
@@ -57,6 +48,22 @@ class SymbolTable:
                 symbol.lexical_level == self.current_level):
                 return symbol
         return None
+    
+    def lookup(self, name):
+        for symbol in reversed(self.symbols):
+            if symbol.name == name:
+                return symbol
+        return None
+    
+    def add_reference(self, name):
+        decl = self.lookup(name)
+
+        if not decl:
+            raise Exception(f"Identificador {name} não declarado")
+
+        decl.used = True
+
+        self.insert(name=name, type=decl.type, category="referência")
 
     def mark_used(self, name):
 
