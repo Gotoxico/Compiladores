@@ -162,8 +162,8 @@ class Parser:
         token = self.current()
 
         if token.type in ("identificador", "identificador_procedimento"):
-            self.match(token.type)
-            self.resto_identificador()
+            ident = self.match(token.type)
+            self.resto_identificador(ident)
         elif token.type == "if":
             self.comando_condicional()
         elif token.type == "while":
@@ -173,14 +173,16 @@ class Parser:
         else:
             raise SyntaxError(f"Comando inesperado: {token.lexeme}")
 
-    def resto_identificador(self):
+    def resto_identificador(self, ident):
         token = self.current()
 
         if token and token.type == "atribuicao":
+            self.sym_table.add_reference(ident.lexeme)
             self.match("atribuicao")
             self.expressao()
 
         elif token and token.type == "abre_parentese":
+            self.sym_table.add_reference(ident.lexeme)
             self.match("abre_parentese")
 
             if self.current() and self.current().type != "fecha_parentese":
@@ -248,8 +250,8 @@ class Parser:
             self.match("identificador_constante")
         
         elif token.type == "identificador":
-            self.match("identificador")
-            self.resto_identificador()
+            ident = self.match("identificador")
+            self.resto_identificador(ident)
 
         elif token.type == "abre_parentese":
             self.match("abre_parentese")
