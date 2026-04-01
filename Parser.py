@@ -247,10 +247,12 @@ class Parser:
             self.match("numero_inteiro")
 
         elif token.type == "identificador_constante":
-            self.match("identificador_constante")
+            const = self.match("identificador_constante")
+            '''self.sym_table.add_reference(const.lexeme)'''
         
         elif token.type == "identificador":
             ident = self.match("identificador")
+            self.sym_table.add_reference(ident.lexeme)
             self.resto_identificador(ident)
 
         elif token.type == "abre_parentese":
