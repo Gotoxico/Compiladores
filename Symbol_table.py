@@ -22,6 +22,15 @@ class SymbolTable:
         self.scope_stack = ["global"]
         self.counter = 1
 
+        self._insert_builtins()
+
+    def _insert_builtins(self):
+        self.insert(name="read", type="procedure", category="procedimento")
+        self.insert(name="write", type="procedure", category="procedimento")
+
+        '''self.insert(name="true", type="boolean", category="constante", value="true")
+        self.insert(name="false", type="boolean", category="constante", value="false")'''
+
     def enter_scope(self, scope_name):
         self.current_level += 1
         self.scope_stack.append(scope_name)

@@ -328,7 +328,7 @@ tabela_erros.pack(fill="both", expand=True)
 
 tabela_simbolos = ttk.Treeview(
     frame_simbolos,
-    columns=("símbolo", "tipo", "categoria", "valor", "passado como", "usado", "nível léxico", "escopo"),
+    columns=("símbolo", "tipo", "categoria", "passado como", "usado", "nível léxico", "escopo"), # Removi o "valor", creio que nn precisa
     show="headings"
 )
 for col in tabela_simbolos["columns"]:
