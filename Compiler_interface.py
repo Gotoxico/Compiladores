@@ -239,6 +239,13 @@ def novo():
     label_linhas.config(text="0 linhas")
     label_tokens.config(text="0 tokens")
     label_erros.config(text="0 erros")
+    label_simbolos.config(text="0 símbolos")
+    for i in tabela_erros_sintatico.get_children():
+        tabela_erros_sintatico.delete(i)
+    
+    for i in tabela_simbolos.get_children():
+        tabela_simbolos.delete(i)
+
     for i in tabela_lexica.get_children():
         tabela_lexica.delete(i)
     mostrar(frame_codigo)
