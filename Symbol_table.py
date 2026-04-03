@@ -28,8 +28,8 @@ class SymbolTable:
         self.insert(name="read", type="procedure", category="procedimento")
         self.insert(name="write", type="procedure", category="procedimento")
 
-        '''self.insert(name="true", type="boolean", category="constante", value="true")
-        self.insert(name="false", type="boolean", category="constante", value="false")'''
+        self.insert(name="true", type="boolean", category="constante", value="true")
+        self.insert(name="false", type="boolean", category="constante", value="false")
 
     def enter_scope(self, scope_name):
         self.current_level += 1

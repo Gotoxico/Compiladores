@@ -1,8 +1,17 @@
 class Parser:
-    def __init__(self, tokens, sym_table):
+    def __init__(self, tokens, sym_table, errors):
         self.tokens = tokens
         self.pos = 0
         self.sym_table = sym_table
+        self.errors = errors
+
+    def error(self, message):
+        token = self.current()
+        self.errors.append({
+            "message": message,
+            "line": token.line if token else None,
+            "col": token.col_start if token else None
+        })
 
     def current(self):
         if self.pos < len(self.tokens):
@@ -19,27 +28,23 @@ class Parser:
             self.advance()
             return token
 
-        # Still needs to change this error handling
-        raise SyntaxError(
-            f"Esperado {token_type}, encontrado {token.type if token else 'EOF'} Linha: {token.line}"
-        )
+        self.error(f"Esperado token do tipo {token_type}, mas encontrado {token.type if token else 'EOF'}")
+        self.advance()  
+        return None
     
-
     
     def programa(self):
         self.match("programa")
 
         name = self.match("identificador")
-
-        self.sym_table.insert(name=name.lexeme, type="nome_programa", category="variável")
+        if name:
+            self.sym_table.insert(name=name.lexeme, type="nome_programa", category="variável")
 
         self.match("ponto_virgula")
 
         self.bloco()
 
         self.match("ponto")
-
-
 
     def bloco(self):
         if self.current() and self.current().type == "identificador_tipo":
@@ -49,8 +54,6 @@ class Parser:
             self.parte_declaracao_sub_rotinas()
 
         self.comando_composto()
-
-
 
 
     def parte_declaracao_variaveis(self):
@@ -70,7 +73,8 @@ class Parser:
         for ident in ids:
             # We still need to change this error handling
             if self.sym_table.lookup_current_scope(ident.lexeme):
-                raise Exception(f"Variável {ident.lexeme} já declarada")
+                error_message = f"Variável {ident.lexeme} já declarada"
+                self.error(error_message)
 
             self.sym_table.insert(name=ident.lexeme, type=tipo.lexeme, category="variável")
 
@@ -102,7 +106,8 @@ class Parser:
         identificador = self.match("identificador")
 
         if self.sym_table.lookup_current_scope(identificador.lexeme):
-            raise Exception(f"Procedimento {identificador.lexeme} já declarado")
+            error_message = f"Procedimento {identificador.lexeme} já declarado"
+            self.error(error_message)
 
         self.sym_table.insert(
             name=identificador.lexeme,
@@ -146,7 +151,8 @@ class Parser:
         for ident in identificadores:
             # We still need to change this error handling
             if self.sym_table.lookup_current_scope(ident.lexeme):
-                raise Exception(f"Parâmetro formal {ident.lexeme} já declarado")
+                error_message = f"Parâmetro {ident.lexeme} já declarado"
+                self.error(error_message)
 
             self.sym_table.insert(name=ident.lexeme, type=identificador_tipo.lexeme, category="parâmetro-formal", passed_as="valor")
 
@@ -163,7 +169,6 @@ class Parser:
     def comando(self):
         token = self.current()
 
-        # These two initial ifs are more of a precaution against case that was bugging without the first two optional parts of a program
         if not token:
             return
         
@@ -180,11 +185,17 @@ class Parser:
         elif token.type == "begin":
             self.comando_composto()
         else:
-            raise SyntaxError(f"Comando inesperado: {token.lexeme}")
+            self.error(f"Comando inesperado: {token.lexeme} Linha: {token.line}")
+            self.advance() 
 
     def resto_identificador(self, ident):
         token = self.current()
 
+        if token and token.type == "abre_colchete":
+            self.match("abre_colchete")
+            self.expressao()
+            self.match("fecha_colchete")
+            token = self.current() 
         if token and token.type == "atribuicao":
             self.sym_table.add_reference(ident.lexeme)
             self.match("atribuicao")
@@ -193,13 +204,13 @@ class Parser:
         elif token and token.type == "abre_parentese":
             self.sym_table.add_reference(ident.lexeme)
             self.match("abre_parentese")
-
             if self.current() and self.current().type != "fecha_parentese":
                 self.lista_expressoes()
-
             self.match("fecha_parentese")
+            
         else:
-            pass  # Ainda precisa melhorar esse tratamento de erro
+          
+            self.sym_table.add_reference(ident.lexeme)
 
     def comando_condicional(self):
         self.match("if")
@@ -233,6 +244,10 @@ class Parser:
             self.expressao_simples()
 
     def expressao_simples(self):
+        # Lida com o [+|-] opcional no início (Regra 18) 
+        if self.current() and self.current().type in ("operador_soma", "operador_subtracao"):
+            self.advance()
+
         self.termo()
 
         while self.current() and self.current().type in ("operador_soma", "operador_subtracao", "or"):
@@ -250,19 +265,23 @@ class Parser:
         token = self.current()
 
         if not token:
-            raise SyntaxError("Fim de arquivo inesperado")
+            self.error("Fim de arquivo inesperado")
+            return
         
         if token.type == "numero_inteiro":
             self.match("numero_inteiro")
 
         elif token.type == "identificador_constante":
             const = self.match("identificador_constante")
-            '''self.sym_table.add_reference(const.lexeme)'''
         
         elif token.type == "identificador":
             ident = self.match("identificador")
             self.sym_table.add_reference(ident.lexeme)
-            self.resto_identificador(ident)
+            
+            if self.current() and self.current().type == "abre_colchete":
+                self.match("abre_colchete")
+                self.expressao()
+                self.match("fecha_colchete")
 
         elif token.type == "abre_parentese":
             self.match("abre_parentese")
@@ -274,4 +293,5 @@ class Parser:
             self.fator()
 
         else:
-            raise SyntaxError(f"Fator inesperado: {token.lexeme} Linha: {token.line}")
+            self.error(f"Fator inesperado: {token.lexeme} Linha: {token.line}")
+            self.advance()
