@@ -32,7 +32,6 @@ class Parser:
         self.advance()  
         return None
     
-
     
     def programa(self):
         self.match("programa")
@@ -47,8 +46,6 @@ class Parser:
 
         self.match("ponto")
 
-
-
     def bloco(self):
         if self.current() and self.current().type == "identificador_tipo":
             self.parte_declaracao_variaveis()
@@ -57,8 +54,6 @@ class Parser:
             self.parte_declaracao_sub_rotinas()
 
         self.comando_composto()
-
-
 
 
     def parte_declaracao_variaveis(self):
@@ -196,6 +191,11 @@ class Parser:
     def resto_identificador(self, ident):
         token = self.current()
 
+        if token and token.type == "abre_colchete":
+            self.match("abre_colchete")
+            self.expressao()
+            self.match("fecha_colchete")
+            token = self.current() 
         if token and token.type == "atribuicao":
             self.sym_table.add_reference(ident.lexeme)
             self.match("atribuicao")
@@ -204,14 +204,13 @@ class Parser:
         elif token and token.type == "abre_parentese":
             self.sym_table.add_reference(ident.lexeme)
             self.match("abre_parentese")
-
             if self.current() and self.current().type != "fecha_parentese":
                 self.lista_expressoes()
-
             self.match("fecha_parentese")
+            
         else:
-            self.error(f"Identificador inesperado: {ident.lexeme} Linha: {ident.line}")
-            self.advance()
+          
+            self.sym_table.add_reference(ident.lexeme)
 
     def comando_condicional(self):
         self.match("if")
@@ -245,6 +244,10 @@ class Parser:
             self.expressao_simples()
 
     def expressao_simples(self):
+        # Lida com o [+|-] opcional no início (Regra 18) 
+        if self.current() and self.current().type in ("operador_soma", "operador_subtracao"):
+            self.advance()
+
         self.termo()
 
         while self.current() and self.current().type in ("operador_soma", "operador_subtracao", "or"):
@@ -270,12 +273,15 @@ class Parser:
 
         elif token.type == "identificador_constante":
             const = self.match("identificador_constante")
-            '''self.sym_table.add_reference(const.lexeme)'''
         
         elif token.type == "identificador":
             ident = self.match("identificador")
             self.sym_table.add_reference(ident.lexeme)
-            self.resto_identificador(ident)
+            
+            if self.current() and self.current().type == "abre_colchete":
+                self.match("abre_colchete")
+                self.expressao()
+                self.match("fecha_colchete")
 
         elif token.type == "abre_parentese":
             self.match("abre_parentese")
