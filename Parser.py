@@ -152,14 +152,23 @@ class Parser:
 
     def comando_composto(self):
         self.match("begin")
-        self.comando()
-        while self.current() and self.current().type == "ponto_virgula":
-            self.match("ponto_virgula")
+
+        if self.current() and self.current().type != "end":
             self.comando()
+            while self.current() and self.current().type == "ponto_virgula":
+                self.match("ponto_virgula")
+                self.comando()
         self.match("end")
     
     def comando(self):
         token = self.current()
+
+        # These two initial ifs are more of a precaution against case that was bugging without the first two optional parts of a program
+        if not token:
+            return
+        
+        if token.type == "end":
+            return
 
         if token.type in ("identificador", "identificador_procedimento"):
             ident = self.match(token.type)
