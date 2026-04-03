@@ -93,6 +93,14 @@ class lexer:
                 continue
 
             if kind in ('SKIP', 'comentario_bloco', 'comentario_linha'):
+                # CONSERTO: Atualizar linhas consumidas pelo comentário de bloco
+                if kind == 'comentario_bloco':
+                    quebras = lexeme.count('\n')
+                    if quebras > 0:
+                        self.line_num += quebras
+                        # Encontra a posição exata da última quebra de linha dentro do comentário
+                        ultimo_newline = lexeme.rfind('\n')
+                        self.line_start = start + ultimo_newline + 1
                 continue
 
             if kind in ('comentario_bloco_incompleto'):
