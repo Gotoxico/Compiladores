@@ -8,14 +8,15 @@ class Compilador:
         self.pos = 0
         self.errors = []
 
+
     def compile(self, source_code):
         self.tokens = list(self.lexer.analise(source_code))
 
         parser = Parser.Parser(self.tokens, self.sym_table, self.errors)
         
-        parser.programa()
+        TreeNode = parser.programa()
 
-        return self.sym_table, self.errors
+        return self.sym_table, self.errors, TreeNode
 
 
     

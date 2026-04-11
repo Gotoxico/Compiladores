@@ -41,13 +41,11 @@ MISMATCH_BG = "#fE6e6e"
 # ================= LÓGICA DE HOVER SINCRONIZADO =================
 
 def on_enter(card, label_titulo, label_contador):
-    # Altera todos os elementos simultaneamente
     card.configure(bg=HOVER_BG)
     label_titulo.configure(bg=HOVER_BG)
     label_contador.configure(bg="#dee7ff") 
 
 def on_leave(card, label_titulo, label_contador):
-    # Retorna ao estado original
     card.configure(bg=CARD_BG)
     label_titulo.configure(bg=CARD_BG)
     label_contador.configure(bg="#eef2ff")
@@ -86,15 +84,11 @@ def criar_card(parent, titulo, contador, comando):
     )
     contador_label.pack(side="right")
 
-    # BINDINGS CENTRALIZADOS
-    # Usamos o evento do Card para controlar os filhos, evitando o "duplo hover"
     card.bind("<Enter>", lambda e: on_enter(card, titulo_label, contador_label))
     card.bind("<Leave>", lambda e: on_leave(card, titulo_label, contador_label))
     
-    # Evento de clique
     card.bind("<Button-1>", lambda e: comando())
     
-    # Propaga o clique dos labels para a função de comando
     titulo_label.bind("<Button-1>", lambda e: comando())
     contador_label.bind("<Button-1>", lambda e: comando())
 
@@ -145,12 +139,12 @@ label_identificadores = criar_card(sidebar, "Análise Semântica", "0 nós", lam
 topbar = tk.Frame(content, bg="#f4f6fb")
 topbar.pack(fill="x", pady=(0, 20))
 
-def criar_botao_topo(texto, primary=False, command=None):
+def criar_botao_topo(texto, primary=False, command=None, root=topbar):
     bg_col = PRIMARY if primary else CARD_BG
     fg_col = "white" if primary else TEXT
     
     btn = tk.Label(
-        topbar,
+        root,
         text=texto,
         bg=bg_col,
         fg=fg_col,
@@ -163,7 +157,6 @@ def criar_botao_topo(texto, primary=False, command=None):
     )
     btn.pack(side="left", padx=5)
     
-    # Adiciona o evento de clique se um comando for fornecido
     if command:
         btn.bind("<Button-1>", lambda e: command())
     
@@ -215,24 +208,38 @@ def compilar():
         ), tags=("mismatch",))
 
     try:
-        symbols, errors = compilador.compile(codigo)
-        for i in tabela_simbolos.get_children():
-            tabela_simbolos.delete(i)
+        symbols, errors, treeNode = compilador.compile(codigo)
+        
+        for i in tabela_simbolos.get_children(): tabela_simbolos.delete(i)
+        for i in tabela_erros_sintatico.get_children(): tabela_erros_sintatico.delete(i)
+        for i in tree_sintatica.get_children(): tree_sintatica.delete(i)
+        
+        animacao_estado["passos"] = []
+        animacao_estado["indice"] = 0
+        animacao_estado["tokens_texto"] = [t.lexeme for t in tokens if t.type not in ('comentario_bloco', 'comentario_linha', 'SKIP', 'NEWLINE', 'comentario_bloco_incompleto')]
+        atualizar_texto_fila()
 
         label_simbolos.config(text=f"{len(symbols.symbols)} símbolos")
-
         for sym in symbols.symbols:
-            tabela_simbolos.insert("", "end", values=(sym.name, sym.type, sym.category, sym.value, sym.passed_as, sym.used, sym.lexical_level, sym.scope),)
+            tabela_simbolos.insert("", "end", values=(sym.name, sym.type, sym.category, sym.value, sym.passed_as, sym.used, sym.lexical_level, sym.scope))
 
         label_erros.config(text=f"{len(errors)} erros")
         for err in errors:
             tabela_erros_sintatico.insert("", "end", values=(err["message"], err["line"], err["col"]))
+
+        mapear_arvore_para_passos(treeNode)
+        
+        if animacao_estado["passos"]:
+            executar_passo()
 
     except SyntaxError as erro:
         label_erros.config(text="1 erro")
         print("Erro sintático:", erro)
 
     mostrar(frame_lexico)
+    mostrar(frame_lexico)
+
+
 
 def novo():
     text_area.delete("1.0", "end")
@@ -274,7 +281,6 @@ def import_text():
 
 criar_botao_topo("Abrir", command=import_text)
 
-# criar_botao_topo("Salvar")
 btn_run = criar_botao_topo("Compilar", primary=True, command=compilar)
 btn_run.pack(side="right")
 
@@ -282,23 +288,21 @@ btn_run.pack(side="right")
 editor_container = tk.Frame(frame_codigo, bg="white", highlightthickness=1, highlightbackground=BORDER)
 editor_container.pack(fill="both", expand=True)
 
-# Frame interno para alinhar lado a lado
 editor_inner = tk.Frame(editor_container, bg="white")
 editor_inner.pack(fill="both", expand=True)
-# ================= LINHAS =================
 # ================= LINHAS E TEXT AREA =================
 
 line_numbers = tk.Text(
     editor_inner,
     width=4,
     padx=5,
-    pady=20, # Sincronizado com o pady do text_area
+    pady=20, 
     takefocus=0,
     border=0,
     background="#f1f3f9",
     state="disabled",
     font=("Consolas", 12),
-    wrap="none" # CRUCIAL: Evita que textos longos quebrem o alinhamento das linhas
+    wrap="none" 
 )
 line_numbers.pack(side="left", fill="y")
 
@@ -311,7 +315,7 @@ text_area = tk.Text(
     insertbackground=PRIMARY,
     selectbackground="#dbe4ff",
     undo=True,
-    wrap="none" # CRUCIAL: Desativa a quebra automática de linha
+    wrap="none"
 )
 text_area.pack(side="right", fill="both", expand=True)
 
@@ -321,16 +325,13 @@ def atualizar_linhas(event=None):
     line_numbers.config(state="normal")
     line_numbers.delete("1.0", "end")
 
-    # Conta o total de linhas
     total_linhas = int(text_area.index('end-1c').split('.')[0])
 
-    # Gera o texto dos números de linha de uma vez
     linhas_texto = "\n".join(str(i) for i in range(1, total_linhas + 1))
     line_numbers.insert("1.0", linhas_texto)
 
     line_numbers.config(state="disabled")
     
-    # Força a barra de números a acompanhar exatamente o scroll atual do texto
     line_numbers.yview_moveto(text_area.yview()[0])
 
 def atualizar_contadores(event=None):
@@ -342,20 +343,16 @@ def ao_modificar_texto(event=None):
     atualizar_contadores()
 
 def sincronizar_scroll(*args):
-    # Quando o usuário arrasta a barra de rolagem
     text_area.yview(*args)
     line_numbers.yview(*args)
 
 def ao_scroll_mudar(*args):
-    # Quando o scroll muda internamente (ex: digitando enter até o final da tela)
     scrollbar.set(*args)
     line_numbers.yview_moveto(args[0])
 
-# Configuração da Scrollbar
 scrollbar = ttk.Scrollbar(editor_inner, command=sincronizar_scroll)
 scrollbar.pack(side="right", fill="y")
 
-# Vincula o scroll do text_area à barra e à coluna de números
 text_area.config(yscrollcommand=ao_scroll_mudar)
 
 # ================= BINDINGS (EVENTOS) =================
@@ -375,16 +372,12 @@ atualizar_linhas()
 
 # ================= TABELA =================
 
-# scrollbar = ttk.Scrollbar(frame_lexico, orient="vertical")
-# scrollbar.pack(side="right", fill="y")
-
 tabela_lexica = ttk.Treeview(
     frame_lexico,
     columns=("Tipo", "Lexema", "Linha", "Coluna Inicial", "Coluna Final"),
     show="headings",
     # yscrollcommand=scrollbar.set
 )
-# scrollbar.config(command=tabela_lexica.yview)
 for col in tabela_lexica["columns"]:
     tabela_lexica.heading(col, text=col.upper())
     tabela_lexica.column(col, width=120, anchor="center")
@@ -410,13 +403,47 @@ tabela_erros.pack(fill="both", expand=True)
 
 tabela_simbolos = ttk.Treeview(
     frame_simbolos,
-    columns=("símbolo", "tipo", "categoria", "passado como", "usado", "nível léxico", "escopo"), # Removi o "valor", creio que nn precisa
+    columns=("símbolo", "tipo", "categoria", "passado como", "usado", "nível léxico", "escopo"),
     show="headings"
 )
 for col in tabela_simbolos["columns"]:
     tabela_simbolos.heading(col, text=col.upper())
     tabela_simbolos.column(col, width=120, anchor="center")
 tabela_simbolos.pack(fill="both", expand=True)
+
+# ================= ESTRUTURA DO FRAME SINTÁTICO =================
+
+frame_animacao = tk.Frame(frame_sintatico, bg="#f4f6fb")
+frame_animacao.pack(fill="x", pady=(0, 10))
+
+frame_fila_tokens = tk.Frame(frame_animacao, bg="white", highlightthickness=1, highlightbackground=BORDER)
+frame_fila_tokens.pack(side="left", fill="both", expand=True, padx=(0, 5))
+
+tk.Label(frame_fila_tokens, text="FILA DE TOKENS", bg="#f1f3f9", fg=TEXT, font=("Segoe UI", 10, "bold"), anchor="w", padx=10, pady=5).pack(fill="x")
+
+texto_fila_tokens = tk.Text(frame_fila_tokens, height=2, font=("Consolas", 12), bd=0, padx=10, pady=10, bg="white", state="disabled")
+texto_fila_tokens.pack()
+
+frame_botoes = tk.Frame(frame_animacao, bg="#f4f6fb")
+frame_botoes.pack(side="right", fill="y", padx=(5, 0))
+
+btn_proximo = criar_botao_topo("Próximo Passo", primary=True, root=frame_botoes)
+btn_proximo.pack(fill="x", pady=2)
+
+btn_tudo = criar_botao_topo("Mostrar Tudo", root=frame_botoes)
+btn_tudo.pack(fill="x", pady=2)
+
+
+
+frame_arvore = tk.Frame(frame_sintatico, bg="white", highlightthickness=1, highlightbackground=BORDER)
+frame_arvore.pack(fill="both", expand=True, pady=(0, 10))
+
+scroll_arvore = ttk.Scrollbar(frame_arvore, orient="vertical")
+scroll_arvore.pack(side="right", fill="y")
+
+tree_sintatica = ttk.Treeview(frame_arvore, show="tree", yscrollcommand=scroll_arvore.set)
+scroll_arvore.config(command=tree_sintatica.yview)
+tree_sintatica.pack(fill="both", expand=True)
 
 frame_erros_sintatico = tk.Frame(frame_sintatico, bg="white", highlightthickness=1, highlightbackground=BORDER)
 frame_erros_sintatico.pack(fill="x")
@@ -428,18 +455,76 @@ tabela_erros_sintatico = ttk.Treeview(
     frame_erros_sintatico,
     columns=("Mensagem", "Linha", "Coluna"),
     show="headings",
-    height=6,
+    height=5,
     yscrollcommand=scroll_erros_sintatico.set
 )
-
 scroll_erros_sintatico.config(command=tabela_erros_sintatico.yview)
 
 for col in tabela_erros_sintatico["columns"]:
     tabela_erros_sintatico.heading(col, text=col.upper())
     tabela_erros_sintatico.column(col, anchor="center", width=150)
-
 tabela_erros_sintatico.pack(fill="both", expand=True)
 
+
+# ================= LÓGICA DE ANIMAÇÃO SINTÁTICA =================
+
+animacao_estado = {
+    "passos": [],      
+    "indice": 0,       
+    "tokens_texto": [] 
+}
+
+def atualizar_texto_fila():
+    """Atualiza o widget de texto com os tokens restantes na fila"""
+    texto_fila_tokens.config(state="normal")
+    texto_fila_tokens.delete("1.0", "end")
+    texto_fila_tokens.insert("end", " ".join(animacao_estado["tokens_texto"]))
+    texto_fila_tokens.config(state="disabled")
+
+def executar_passo():
+    """Lê a próxima instrução da lista e atualiza a UI"""
+    if animacao_estado["indice"] >= len(animacao_estado["passos"]):
+        return 
+
+    acao, parent_id, node_id, tipo, valor = animacao_estado["passos"][animacao_estado["indice"]]
+    
+    texto_no = valor if valor else tipo
+    
+    tag = ("erro",) if "ERROR" in tipo or "ERRO" in tipo else ()
+    tree_sintatica.tag_configure("erro", foreground="#d63031", font=("Segoe UI", 10, "bold"))
+    
+    tree_sintatica.insert(parent_id, "end", iid=node_id, text=texto_no, open=True, tags=tag)
+    tree_sintatica.see(node_id)
+    if valor and animacao_estado["tokens_texto"]:
+        if animacao_estado["tokens_texto"][0] == valor:
+            animacao_estado["tokens_texto"].pop(0)
+            atualizar_texto_fila()
+            
+    animacao_estado["indice"] += 1
+
+def executar_tudo():
+    """Avança todos os passos restantes até o fim"""
+    while animacao_estado["indice"] < len(animacao_estado["passos"]):
+        executar_passo()
+
+btn_proximo.bind("<Button-1>", lambda e: executar_passo())
+btn_tudo.bind("<Button-1>", lambda e: executar_tudo())
+
+def mapear_arvore_para_passos(no, parent_id=""):
+    """Transforma a estrutura de dados Tree em uma lista plana de passos"""
+    if no is None: return
+    
+    node_id = str(id(no)) # ID único para o Tkinter
+    
+    tipo_no = getattr(no, 'type', getattr(no, 'tipo', 'Desconhecido'))
+    valor_no = getattr(no, 'value', getattr(no, 'valor', None))
+    
+    animacao_estado["passos"].append(("ADD", parent_id, node_id, tipo_no, valor_no))
+    
+    filhos = getattr(no, 'children', getattr(no, 'filhos', []))
+    
+    for filho in filhos:
+        mapear_arvore_para_passos(filho, node_id)
 
 mostrar(frame_codigo)
 root.mainloop()
