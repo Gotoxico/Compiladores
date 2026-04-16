@@ -55,11 +55,19 @@ token_specification = [
     ('abre_parentese', r'\('),
     ('fecha_parentese', r'\)'),
 
+    # Colchetes
+    ('abre_colchete', r'\['),
+    ('fecha_colchete', r'\]'),
+
     # Operadores
     ('operador_soma', r'\+'),
     ('operador_subtracao', r'-'),
     ('operador_multiplicacao', r'\*'),
     ('operador_divisao', r'\bdiv\b'),
+
+    # Operadores lógicos
+    ('or', r'\bor\b'),
+    ('and', r'\band\b'),
 
     # Identificador genérico
     ('MISMATCH_identificador', r'[A-Za-z_][A-Za-z0-9_]{10,}'),

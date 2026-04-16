@@ -23,7 +23,14 @@ class Parser:
     def advance(self):
         self.pos += 1
 
-    def match(self, token_type):
+    def sync(self, sync_symbols):
+        while self.current() is not None:
+            if self.current().type in sync_symbols:
+                return
+            
+            self.advance()
+
+    def match(self, token_type, sync_symbols):
         token = self.current()
 
         if token and token.type == token_type:
@@ -31,11 +38,11 @@ class Parser:
             return token
 
         self.error(f"Esperado token do tipo {token_type}, mas encontrado {token.type if token else 'EOF'}")
-        self.advance()  
+        self.sync(sync_symbols)
         return None
     
-    def match_node(self, token_type, flag_return_token=False):
-        token = self.match(token_type)
+    def match_node(self, token_type, sync_symbols, flag_return_token=False):
+        token = self.match(token_type, sync_symbols)
         if token:
             if flag_return_token:
                 return token, Tree.TreeNode(type=token.type, value=token.lexeme)
@@ -46,26 +53,33 @@ class Parser:
                 return None, Tree.TreeNode('<ERROR>', f'Token do tipo {token_type} esperado, mas encontrado {token.type if token else "EOF"}')
             else:
                 return Tree.TreeNode('<ERROR>', f'Token do tipo {token_type} esperado, mas encontrado {token.type if token else "EOF"}')        
+            
+    def fill_table(self, identifiers, type, category):
+        for ident in identifiers:
+            # We still need to change this error handling
+            if self.sym_table.lookup_current_scope(ident.lexeme):
+                error_message = f"{category.capitalize()} {ident.lexeme} já existe no escopo atual"
+                self.error(error_message)
 
+            self.sym_table.insert(name=ident.lexeme, type=type.lexeme, category=category)
     
+
     
     def programa(self):
-
         program_node = Tree.TreeNode(type="<programa>")
-        program_node.add_child(self.match_node("programa"))
+        program_node.add_child(self.match_node("programa", {"identificador", "ponto_virgula", "identificador_tipo", "procedimento", "begin", "ponto"}))
 
-
-        name = self.match("identificador")
+        name = self.match("identificador", {"ponto_virgula", "identificador_tipo", "procedimento", "begin", "ponto"})
 
         if name:
             self.sym_table.insert(name=name.lexeme, type="nome_programa", category="variável")
             program_node.add_child(Tree.TreeNode(type="Terminal", value=name.lexeme))
 
-        program_node.add_child(self.match_node("ponto_virgula"))
+        program_node.add_child(self.match_node("ponto_virgula", {"identificador_tipo", "procedimento", "begin", "ponto"}))
 
         program_node.add_child(self.bloco())
 
-        program_node.add_child(self.match_node("ponto"))
+        program_node.add_child(self.match_node("ponto", {}))
 
         return program_node
 
@@ -85,7 +99,7 @@ class Parser:
         variable_declaration_part_node.add_child(self.declaracao_variaveis())
 
         while self.current() and self.current().type == "ponto_virgula":
-            variable_declaration_part_node.add_child(self.match_node("ponto_virgula"))
+            variable_declaration_part_node.add_child(self.match_node("ponto_virgula", {"identificador_tipo", "procedimento", "begin"}))
 
             if self.current() and self.current().type == "identificador_tipo":
                 variable_declaration_part_node.add_child(self.declaracao_variaveis())
@@ -93,7 +107,7 @@ class Parser:
 
     def declaracao_variaveis(self):
         variable_declaration_node = Tree.TreeNode(type="<declaracao_variaveis>")
-        tipo = self.match("identificador_tipo")
+        tipo = self.match("identificador_tipo", {"identificador", "ponto_virgula"})
 
         if tipo:
             variable_declaration_node.add_child(self.tipo(tipo))
@@ -112,35 +126,32 @@ class Parser:
     def lista_identificadores(self ):
         variable_list_node = Tree.TreeNode(type="<lista_identificadores>")  
         ids = []
-        token, variable_child = self.match_node("identificador", flag_return_token=True)
+        sync_set = {"virgula", "dois_pontos", "ponto_virgula"}
 
-        ids.append(token)
+        token, variable_child = self.match_node("identificador", sync_set, flag_return_token=True)
+
+        if token: 
+            ids.append(token)
         variable_list_node.add_child(variable_child)
 
         while self.current() and self.current().type == "virgula":
-            variable_list_node.add_child(self.match_node("virgula"))
+            variable_list_node.add_child(self.match_node("virgula", sync_set))
 
-            token, variable_child = self.match_node("identificador", flag_return_token=True)
-            ids.append(token)
+            token, variable_child = self.match_node("identificador", sync_set, flag_return_token=True)
+            if token:
+                ids.append(token)
             variable_list_node.add_child(variable_child)
 
         return ids, variable_list_node
     
-    def fill_table(self, identifiers, type, category):
-        for ident in identifiers:
-            # We still need to change this error handling
-            if self.sym_table.lookup_current_scope(ident.lexeme):
-                error_message = f"{category.capitalize()} {ident.lexeme} já existe no escopo atual"
-                self.error(error_message)
-
-            self.sym_table.insert(name=ident.lexeme, type=type.lexeme, category=category)
+    
 
     def parte_declaracao_sub_rotinas(self):
         subroutine_declaration_part_node = Tree.TreeNode(type="<parte_declaracao_sub_rotinas>")
         subroutine_declaration_part_node.add_child(self.declaracao_procedimento())
 
         while self.current() and self.current().type == "ponto_virgula":
-            subroutine_declaration_part_node.add_child(self.match_node("ponto_virgula"))
+            subroutine_declaration_part_node.add_child(self.match_node("ponto_virgula", {"procedimento", "begin"}))
 
             if self.current() and self.current().type == "procedimento":
                 subroutine_declaration_part_node.add_child(self.declaracao_procedimento())
@@ -150,8 +161,8 @@ class Parser:
 
     def declaracao_procedimento(self):
         subroutine_declaration_node = Tree.TreeNode(type="<declaracao_procedimento>")
-        subroutine_declaration_node.add_child(self.match_node("procedimento"))
-        identificador = self.match("identificador")
+        subroutine_declaration_node.add_child(self.match_node("procedimento", {"identificador", "abre_parentese", "ponto_virgula"}))
+        identificador = self.match("identificador", {"abre_parentese", "ponto_virgula"})
 
         if identificador:
             if self.sym_table.lookup_current_scope(identificador.lexeme) :
@@ -161,70 +172,66 @@ class Parser:
             else:  
                 subroutine_declaration_node.add_child(Tree.TreeNode(type="Terminal", value=identificador.lexeme)) 
 
+        if identificador:
+            self.sym_table.insert(name=identificador.lexeme, type='procedure', category="procedimento")
 
-        self.sym_table.insert(
-            name=identificador.lexeme,
-            type= 'procedure',
-            category="procedimento"
-        )
-
-        self.sym_table.enter_scope(identificador.lexeme)
+        self.sym_table.enter_scope()
 
         if self.current() and self.current().type == "abre_parentese":
             subroutine_declaration_node.add_child(self.parametros_formais())
 
-        subroutine_declaration_node.add_child(self.match_node("ponto_virgula"))
+        subroutine_declaration_node.add_child(self.match_node("ponto_virgula", {"identificador_tipo", "procedimento", "begin"}))
 
         subroutine_declaration_node.add_child(self.bloco())
+
         self.sym_table.exit_scope()
 
         return subroutine_declaration_node
 
     def parametros_formais(self):
         formal_parameters_node = Tree.TreeNode(type="<parametros_formais>")
-        formal_parameters_node.add_child(self.match_node("abre_parentese"))
+        formal_parameters_node.add_child(self.match_node("abre_parentese", {"ponto_virgula", "variavel", "identificador", "fecha_parentese"}))
 
         formal_parameters_node.add_child(self.secao_parametros_formais())
 
         while self.current() and self.current().type == "ponto_virgula":
-            formal_parameters_node.add_child(self.match_node("ponto_virgula"))
+            formal_parameters_node.add_child(self.match_node("ponto_virgula", {"variavel", "identificador", "fecha_parentese"}))
             formal_parameters_node.add_child(self.secao_parametros_formais())
 
-        formal_parameters_node.add_child(self.match_node("fecha_parentese"))
+        formal_parameters_node.add_child(self.match_node("fecha_parentese", {"ponto_virgula"}))
         return formal_parameters_node
     
-
     def secao_parametros_formais(self):
         formal_parameter_section_node = Tree.TreeNode(type="<secao_parametros_formais>")
 
         if self.current().type == "variavel":
-            formal_parameter_section_node.add_child(self.match_node("variavel"))
+            formal_parameter_section_node.add_child(self.match_node("variavel", {"dois_pontos", "identificador_tipo", "ponto_virgula", "fecha_parentese"}))
 
         identifiers, variable_list_node = self.lista_identificadores()
         formal_parameter_section_node.add_child(variable_list_node)
     
 
-        formal_parameter_section_node.add_child(self.match_node("dois_pontos"))
+        formal_parameter_section_node.add_child(self.match_node("dois_pontos", {"identificador_tipo", "ponto_virgula", "fecha_parentese"}))
 
-        identificador_tipo, child = self.match_node("identificador_tipo", flag_return_token=True)
+        identificador_tipo, child = self.match_node("identificador_tipo", {"ponto_virgula", "fecha_parentese"}, flag_return_token=True)
         formal_parameter_section_node.add_child(child)
 
         self.fill_table(identifiers, identificador_tipo, "variável")
 
         return formal_parameter_section_node
 
-
     def comando_composto(self):
         compound_command_node = Tree.TreeNode(type="<comando_composto>")
-        compound_command_node.add_child(self.match_node("begin"))
+        compound_command_node.add_child(self.match_node("begin", {"identificador", "identificador_procedimento", "if", "while", "begin", "ponto_virgula", "end"}))
 
         if self.current() and self.current().type != "end":
             compound_command_node.add_child(self.comando())
 
             while self.current() and self.current().type == "ponto_virgula":
-                compound_command_node.add_child(self.match_node("ponto_virgula"))
+                compound_command_node.add_child(self.match_node("ponto_virgula", {"identificador", "identificador_procedimento", "if", "while", "begin", "ponto_virgula", "end"}))
                 compound_command_node.add_child(self.comando())
-        compound_command_node.add_child(self.match_node("end"))
+
+        compound_command_node.add_child(self.match_node("end", {"ponto", "ponto_virgula", "end", "else"}))
         return compound_command_node
     
     def comando(self):
@@ -238,7 +245,7 @@ class Parser:
             return
 
         if token.type in ("identificador", "identificador_procedimento"):
-            ident, child = self.match_node(token.type, flag_return_token=True)
+            ident, child = self.match_node(token.type, {"if", "while", "begin", "abre_colchete", "fecha_colchete", "atribuicao", "abre_parentese", "fecha_parentese", "ponto_virgula", "end", "else"}, flag_return_token=True)
             command_node.add_child(child)
             command_node.add_child(self.resto_identificador(ident))
         elif token.type == "if":
@@ -259,49 +266,55 @@ class Parser:
         token = self.current()
 
         if token and token.type == "abre_colchete":
-            ident_rest_node.add_child(self.match_node("abre_colchete"))
+            ident_rest_node.add_child(self.match_node("abre_colchete", {"fecha_colchete", "atribuicao", "abre_parentese", "fecha_parentese", "ponto_virgula", "end", "else"}))
             
             ident_rest_node.add_child(self.expressao())
-            ident_rest_node.add_child(self.match_node("fecha_colchete"))
+            ident_rest_node.add_child(self.match_node("fecha_colchete", {"atribuicao", "abre_parentese", "fecha_parentese", "ponto_virgula", "end", "else"}))
             token = self.current() 
 
         if token and token.type == "atribuicao":
-            self.sym_table.add_reference(ident.lexeme)
-            ident_rest_node.add_child(self.match_node("atribuicao"))
+            if ident:
+                self.sym_table.add_reference(ident.lexeme)
+            ident_rest_node.add_child(self.match_node("atribuicao", {"abre_parentese", "fecha_parentese", "ponto_virgula", "end", "else"}))
             ident_rest_node.add_child(self.expressao())
 
         elif token and token.type == "abre_parentese":
-            self.sym_table.add_reference(ident.lexeme)
-            ident_rest_node.add_child(self.match_node("abre_parentese"))
+            if ident:
+                self.sym_table.add_reference(ident.lexeme)
+            ident_rest_node.add_child(self.match_node("abre_parentese", {"fecha_parentese", "ponto_virgula", "end", "else"}))
             if self.current() and self.current().type != "fecha_parentese":
                 ident_rest_node.add_child(self.lista_expressoes())
-            ident_rest_node.add_child(self.match_node("fecha_parentese"))
+            ident_rest_node.add_child(self.match_node("fecha_parentese", {"ponto_virgula", "end", "else"}))
             
         else:
-            self.sym_table.add_reference(ident.lexeme)
-            ident_rest_node.add_child(Tree.TreeNode(type="Terminal", value=ident.lexeme))
+            if ident:
+                self.sym_table.add_reference(ident.lexeme)
+                ident_rest_node.add_child(Tree.TreeNode(type="Terminal", value=ident.lexeme))
         
         return ident_rest_node
 
     def comando_condicional(self):
+        sync_symbols_comando_condicional = {"operador_soma", "operador_subtracao", "operador_multiplicacao", "operador_divisao", "and", "numero_inteiro", "identificador_constante", "identificador", "abre_parentese", "fecha_parentese", "not", "or","relacao", "then", "identificador", "identificador_procedimento", "if", "while", "begin", "ponto_virgula", "end", "else"}
+
         conditional_command_node = Tree.TreeNode(type="<comando_condicional>")
-        conditional_command_node.add_child(self.match_node("if"))
+        conditional_command_node.add_child(self.match_node("if", sync_symbols_comando_condicional))
         conditional_command_node.add_child(self.expressao())
-        conditional_command_node.add_child(self.match_node("then"))
+        conditional_command_node.add_child(self.match_node("then", sync_symbols_comando_condicional - {"then"}))
 
         conditional_command_node.add_child(self.comando())
 
         if self.current() and self.current().type == "else":
-            conditional_command_node.add_child(self.match_node("else"))
+            conditional_command_node.add_child(self.match_node("else", sync_symbols_comando_condicional - {"then"}))
             conditional_command_node.add_child(self.comando())
 
         return conditional_command_node
 
     def comando_repetitivo(self):
+        sync_symbols_comando_repetitivo = {"do", "operador_soma", "operador_subtracao", "operador_multiplicacao", "operador_divisao", "and", "numero_inteiro", "identificador_constante", "identificador", "abre_parentese", "fecha_parentese", "not", "or", "relacao", "identificador", "identificador_procedimento", "if", "while", "begin", "ponto_virgula", "end", "else"}
         repetitive_command_node = Tree.TreeNode(type="<comando_repetitivo>")
-        repetitive_command_node.add_child(self.match_node("while"))
+        repetitive_command_node.add_child(self.match_node("while", sync_symbols_comando_repetitivo))
         repetitive_command_node.add_child(self.expressao())
-        repetitive_command_node.add_child(self.match_node("do"))
+        repetitive_command_node.add_child(self.match_node("do", sync_symbols_comando_repetitivo - {"do"}))
         repetitive_command_node.add_child(self.comando())
         return repetitive_command_node
 
@@ -311,7 +324,7 @@ class Parser:
         expression_list_node.add_child(self.expressao())
 
         while self.current() and self.current().type == "virgula":
-            expression_list_node.add_child(self.match_node("virgula"))
+            expression_list_node.add_child(self.match_node("virgula"), {"operador_soma", "operador_subtracao", "operador_multiplicacao", "operador_divisao", "and", "numero_inteiro", "identificador_constante", "identificador", "abre_parentese", "fecha_parentese", "not", "or", "relacao", "ponto_virgula", "end", "else"})
             expression_list_node.add_child(self.expressao())
 
         return expression_list_node
@@ -321,23 +334,24 @@ class Parser:
         expression_node.add_child(self.expressao_simples())
 
         if self.current() and self.current().type == "relacao":
-            expression_node.add_child(self.match_node("relacao"))
+            expression_node.add_child(self.match_node("relacao", {"operador_soma", "operador_subtracao", "operador_multiplicacao", "operador_divisao", "and", "numero_inteiro", "identificador_constante", "identificador", "abre_parentese", "fecha_parentese", "not", "or", "ponto_virgula", "end", "else", "then", "do", "fecha_parentese", "fecha_colchete", "virgula"}))
             expression_node.add_child(self.expressao_simples())
         
         return expression_node
 
     def expressao_simples(self):
+        sync_symbols_expressao_simples = {"operador_multiplicacao", "operador_divisao", "and", "numero_inteiro", "identificador_constante", "identificador", "abre_parentese", "fecha_parentese", "not", "operador_soma", "operador_subtracao", "or", "relacao", "ponto_virgula", "end", "else", "then", "do", "fecha_parentese", "fecha_colchete", "virgula"}
         # Lida com o [+|-] opcional no início (Regra 18) 
         simple_expression_node = Tree.TreeNode(type="<expressao_simples>")
 
         if self.current() and self.current().type in ("operador_soma", "operador_subtracao"):
-            simple_expression_node.add_child(self.match_node(self.current().type))
+            simple_expression_node.add_child(self.match_node(self.current().type, sync_symbols_expressao_simples))
             # self.advance()
 
         simple_expression_node.add_child(self.termo())
 
         while self.current() and self.current().type in ("operador_soma", "operador_subtracao", "or"):
-            simple_expression_node.add_child(self.match_node(self.current().type))
+            simple_expression_node.add_child(self.match_node(self.current().type, sync_symbols_expressao_simples - {"operador_soma", "operador_subtracao", "or"}))
             # self.advance()
             simple_expression_node.add_child(self.termo())
 
@@ -348,13 +362,15 @@ class Parser:
         term_node.add_child(self.fator())
 
         while self.current() and self.current().type in ("operador_multiplicacao", "operador_divisao", "and"):
-            term_node.add_child(self.match_node(self.current().type))
+            term_node.add_child(self.match_node(self.current().type, {"numero_inteiro", "identificador_constante", "identificador", "abre_colchete", "fecha_colchete", "abre_parentese", "fecha_parentese", "not", "operador_soma", "operador_subtracao", "or", "relacao", "ponto_virgula", "end", "else", "then", "do", "fecha_parentese", "fecha_colchete","virgula"}))
             # self.advance()
             term_node.add_child(self.fator())
         
         return term_node
     
     def fator(self):
+        sync_symbols_fator = {"operador_multiplicacao", "operador_divisao", "and", "operador_soma", "operador_subtracao", "or", "relacao", "ponto_virgula", "end", "else", "then", "do", "fecha_parentese", "fecha_colchete","virgula"}
+
         factor_node = Tree.TreeNode(type="<fator>")
         token = self.current()
 
@@ -363,28 +379,29 @@ class Parser:
             return
         
         if token.type == "numero_inteiro":
-            factor_node.add_child(self.match_node("numero_inteiro"))
+            factor_node.add_child(self.match_node("numero_inteiro", sync_symbols_fator | {"identificador_constante", "identificador", "abre_colchete", "fecha_colchete", "abre_parentese", "fecha_parentese", "not"}))
 
         elif token.type == "identificador_constante":
-            factor_node.add_child(self.match_node("identificador_constante"))
+            factor_node.add_child(self.match_node("identificador_constante", sync_symbols_fator | {"identificador", "abre_colchete", "fecha_colchete", "abre_parentese", "fecha_parentese", "not"}))
         
         elif token.type == "identificador":
-            ident = self.match("identificador")
-            self.sym_table.add_reference(ident.lexeme)
-            factor_node.add_child(Tree.TreeNode(type="Terminal", value=ident.lexeme))
+            ident = self.match("identificador", sync_symbols_fator | {"abre_colchete", "fecha_colchete", "abre_parentese", "fecha_parentese", "not"})
+            if ident:
+                self.sym_table.add_reference(ident.lexeme)
+                factor_node.add_child(Tree.TreeNode(type="Terminal", value=ident.lexeme))
             
             if self.current() and self.current().type == "abre_colchete":
-                factor_node.add_child(self.match_node("abre_colchete"))
+                factor_node.add_child(self.match_node("abre_colchete", sync_symbols_fator | {"fecha_colchete", "abre_parentese", "fecha_parentese", "not"}))
                 factor_node.add_child(self.expressao())
-                factor_node.add_child(self.match_node("fecha_colchete"))
+                factor_node.add_child(self.match_node("fecha_colchete", sync_symbols_fator | {"abre_parentese", "fecha_parentese", "not"}))
 
         elif token.type == "abre_parentese":
-            factor_node.add_child(self.match_node("abre_parentese"))
+            factor_node.add_child(self.match_node("abre_parentese", sync_symbols_fator | {"fecha_parentese", "not"}))
             factor_node.add_child(self.expressao())
-            factor_node.add_child(self.match_node("fecha_parentese"))
+            factor_node.add_child(self.match_node("fecha_parentese", sync_symbols_fator | {"not"}))
         
         elif token.type == "not":
-            factor_node.add_child(self.match_node("not"))
+            factor_node.add_child(self.match_node("not", sync_symbols_fator))
             factor_node.add_child(self.fator())
 
         else:

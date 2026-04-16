@@ -4,7 +4,7 @@ from typing import Optional
 @dataclass
 class Symbol:
     id: int
-    name: str
+    name: Optional[str] = None
     type: Optional[str] = None
     category: Optional[str] = None
     value: Optional[str] = None
@@ -31,7 +31,7 @@ class SymbolTable:
         self.insert(name="true", type="boolean", category="constante", value="true")
         self.insert(name="false", type="boolean", category="constante", value="false")
 
-    def enter_scope(self, scope_name):
+    def enter_scope(self, scope_name=None):
         self.current_level += 1
         self.scope_stack.append(scope_name)
 
@@ -42,7 +42,7 @@ class SymbolTable:
     def current_scope(self):
         return self.scope_stack[-1]
 
-    def insert(self, name, type=None, category=None, value=None, passed_as=None):
+    def insert(self, name=None, type=None, category=None, value=None, passed_as=None):
 
         symbol = Symbol(id=self.counter, name=name, type=type, category=category, value=value, passed_as=passed_as, lexical_level=self.current_level, scope=self.current_scope())
 
