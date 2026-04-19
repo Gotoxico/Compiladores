@@ -101,7 +101,6 @@ class lexer:
                 continue
 
             if kind in ('SKIP', 'comentario_bloco', 'comentario_linha'):
-                # CONSERTO: Atualizar linhas consumidas pelo comentário de bloco
                 if kind == 'comentario_bloco':
                     quebras = lexeme.count('\n')
                     if quebras > 0:
